@@ -4,7 +4,7 @@
 # educational purposes provided that (1) you do not distribute or publish
 # solutions, (2) you retain this notice, and (3) you provide clear
 # attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-# 
+#
 # Attribution Information: The Pacman AI projects were developed at UC Berkeley.
 # The core projects and autograders were primarily created by John DeNero
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
@@ -23,6 +23,7 @@ import samples
 import sys
 import util
 from pacman import GameState
+from game import Directions
 
 TEST_SET_SIZE = 100
 DIGIT_DATUM_WIDTH=28
@@ -88,7 +89,41 @@ def enhancedPacmanFeatures(state, action):
     """
     features = util.Counter()
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+
+    features["STOP"] = int(action == Directions.STOP) * 100
+
+    successor = state.generateSuccessor(0, action)
+    pac_pos = successor.getPacmanPosition()
+    ghosts = successor.getGhostPositions()
+    capsules = successor.getCapsules()
+    state_food = state.getFood()
+    food = [(x, y)
+            for x, row in enumerate(state_food)
+            for y, food in enumerate(row)
+            if food]
+
+    nearest_ghosts = sorted([util.manhattanDistance(pac_pos, i) for i in ghosts])
+
+    features["nearest_ghost"] = nearest_ghosts[0] * 1.0
+
+    for i in range(min(len(nearest_ghosts), 1)):
+        features["ghost"] += (5 / (0.1 + nearest_ghosts[i]))
+
+    nearest_caps = sorted([util.manhattanDistance(pac_pos, i) for i in capsules])
+
+    for i in range(min(len(nearest_caps), 1)):
+        features["capsule"] += (15 / (1 + nearest_caps[i]))
+
+    nearest_food = sorted([util.manhattanDistance(pac_pos, i) for i in food])
+
+    for i, weight in zip(range(min(len(nearest_food), 5)), [1.3, 0.8] + [0.9] * 3):
+        features["food"] += (weight * nearest_food[i])
+
+    features["capsule count"] = len(capsules) * 10
+    features["win"] = state.isWin()
+    features["lose"] = state.isLose()
+    features["score"] = state.getScore() * 10
+
     return features
 
 
@@ -303,7 +338,7 @@ def runClassifier(args, options):
     featureFunction = args['featureFunction']
     classifier = args['classifier']
     printImage = args['printImage']
-    
+
     # Load data
     numTraining = options.training
     numTest = options.test
